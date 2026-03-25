@@ -1,3 +1,7 @@
+---
+category: Guides
+tags: [FAQ, Support, Pricing]
+---
 # Frequently Asked Questions
 
 ## How do I get started with TechVision?

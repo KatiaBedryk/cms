@@ -5,9 +5,10 @@ import Editor from './components/Editor'
 import './App.css'
 
 function App() {
-  const [pages, setPages] = useState([])          // list of { slug, title }
-  const [activePage, setActivePage] = useState(null) // { slug, title, html, markdown }
+  const [pages, setPages] = useState([])             // list of { slug, title, category, tags }
+  const [activePage, setActivePage] = useState(null) // { slug, html, markdown, category, tags }
   const [search, setSearch] = useState('')
+  const [activeTag, setActiveTag] = useState(null)   // currently selected tag filter
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -44,19 +45,22 @@ function App() {
     }
   }
 
-  async function savePage(slug, markdown) {
+  async function savePage(slug, markdown, category = '', tags = []) {
     try {
       const res = await fetch(`/api/pages/${slug}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown }),
+        body: JSON.stringify({ markdown, category, tags }),
       })
       const data = await res.json()
       if (res.ok) {
-        // Update the page content and the title in the sidebar list
+        // Update the page content and the title/category/tags in the sidebar list
         setActivePage(data)
         setPages(prev =>
-          prev.map(p => p.slug === slug ? { slug, title: data.title } : p)
+          prev.map(p => p.slug === slug
+            ? { slug, title: data.title, category: data.category, tags: data.tags }
+            : p
+          )
         )
         setIsEditing(false)
       } else {
@@ -109,6 +113,8 @@ function App() {
           search={search}
           onSearch={setSearch}
           onSelectPage={loadPage}
+          activeTag={activeTag}
+          onClearTag={() => setActiveTag(null)}
         />
 
         {/* Main content area */}
@@ -136,13 +142,15 @@ function App() {
               title={activeTitle}
               onEdit={() => setIsEditing(true)}
               onDelete={() => deletePage(activePage.slug)}
+              onTagClick={(tag) => setActiveTag(tag)}
+              activeTag={activeTag}
             />
           )}
 
           {!loading && activePage && isEditing && (
             <Editor
               page={activePage}
-              onSave={(markdown) => savePage(activePage.slug, markdown)}
+              onSave={(markdown, category, tags) => savePage(activePage.slug, markdown, category, tags)}
               onCancel={() => setIsEditing(false)}
             />
           )}
