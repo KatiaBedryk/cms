@@ -172,6 +172,62 @@ body {
   opacity: 1;
 }
 
+/* ── Search results in sidebar ───────────────────────── */
+.sidebar-results-header {
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  border-bottom: 1px solid #d0d3d9;
+  background: #e8eaed;
+}
+
+.search-result-item {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid #d0d3d9;
+  cursor: default;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0066cc;
+  cursor: pointer;
+  margin-bottom: 5px;
+}
+
+.search-result-title:hover {
+  text-decoration: underline;
+}
+
+.search-result-title.active {
+  color: #004499;
+}
+
+.search-result-snippet {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.5;
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+/* Highlighted match word */
+mark {
+  background: #fff176;
+  color: #222;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-style: normal;
+}
+
 /* ── Main content ────────────────────────────────────── */
 .main {
   margin-left: 260px;

@@ -128,7 +128,87 @@ app.put('/api/pages/:slug', (req, res) => {
   }
 })
 
-// DELETE /api/pages/:slug — delete a page
+// Strip markdown syntax to get clean plain text for searching.
+// Removes headings (#), bold/italic (*_), links, code blocks, and horizontal rules.
+function stripMarkdown(md) {
+  return md
+    .replace(/^#{1,6}\s+/gm, '')        // headings
+    .replace(/!\[.*?\]\(.*?\)/g, '')     // images
+    .replace(/\[([^\]]+)\]\(.*?\)/g, '$1') // links → keep link text
+    .replace(/`{1,3}[\s\S]*?`{1,3}/g, '') // inline and fenced code
+    .replace(/(\*{1,3}|_{1,3})(.*?)\1/g, '$2') // bold / italic
+    .replace(/^[-*]{3,}\s*$/gm, '')      // horizontal rules
+    .replace(/^>\s+/gm, '')              // blockquotes
+    .replace(/^[-*+]\s+/gm, '')         // unordered list markers
+    .replace(/^\d+\.\s+/gm, '')         // ordered list markers
+    .replace(/\n{2,}/g, '\n')            // collapse blank lines
+    .trim()
+}
+
+// Extract up to maxSnippets text snippets (each ~120 chars) around matches
+// of `query` in `plainText`. Wraps each match in <mark> tags.
+function extractSnippets(plainText, query, maxSnippets = 3) {
+  const CONTEXT = 60  // chars of context before and after the match
+  const snippets = []
+  const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+  let match
+
+  while ((match = regex.exec(plainText)) !== null && snippets.length < maxSnippets) {
+    const start = Math.max(0, match.index - CONTEXT)
+    const end = Math.min(plainText.length, match.index + match[0].length + CONTEXT)
+    let snippet = plainText.slice(start, end).replace(/\n/g, ' ')
+
+    // Add ellipsis if we're not at the start/end of the text
+    if (start > 0) snippet = '…' + snippet
+    if (end < plainText.length) snippet = snippet + '…'
+
+    // Highlight all matches within this snippet
+    const highlighted = snippet.replace(
+      new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+      m => `<mark>${m}</mark>`
+    )
+    snippets.push(highlighted)
+  }
+
+  return snippets
+}
+
+// GET /api/search?q=... — full-text search across all pages
+app.get('/api/search', (req, res) => {
+  const query = (req.query.q || '').trim()
+  if (query.length < 2) return res.json([])
+
+  try {
+    const files = fs.readdirSync(CONTENT_DIR).filter(f => f.endsWith('.md'))
+    const results = []
+
+    for (const file of files) {
+      const slug = file.replace('.md', '')
+      const raw = fs.readFileSync(path.join(CONTENT_DIR, file), 'utf-8')
+      const { body } = parseFrontmatter(raw)
+      const title = extractTitle(body)
+      const plainText = stripMarkdown(body)
+      const lowerQuery = query.toLowerCase()
+
+      const titleMatches = title.toLowerCase().includes(lowerQuery)
+      const snippets = extractSnippets(plainText, query, 3)
+
+      // Include this page if the title or content matches
+      if (titleMatches || snippets.length > 0) {
+        // If title matches but no content snippets, show the opening sentence as context
+        if (snippets.length === 0) {
+          const opening = plainText.slice(0, 120).replace(/\n/g, ' ')
+          snippets.push(opening + (plainText.length > 120 ? '…' : ''))
+        }
+        results.push({ slug, title, snippets })
+      }
+    }
+
+    res.json(results)
+  } catch (err) {
+    res.status(500).json({ error: 'Search failed' })
+  }
+})
 app.delete('/api/pages/:slug', (req, res) => {
   const { slug } = req.params
   if (!isValidSlug(slug)) return res.status(400).json({ error: 'Invalid page name' })

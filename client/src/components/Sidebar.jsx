@@ -1,19 +1,50 @@
 import SearchBar from './SearchBar'
 
-function Sidebar({ pages, activePage, search, onSearch, onSelectPage, activeTag, onClearTag }) {
-  // 1. Filter by search text (title match)
-  const afterSearch = pages.filter(p =>
-    p.title.toLowerCase().includes(search.toLowerCase())
-  )
+function Sidebar({ pages, activePage, search, onSearch, onSelectPage, activeTag, onClearTag, searchResults }) {
 
-  // 2. Filter by active tag (if one is selected)
+  // ── Search results mode ───────────────────────────────
+  if (searchResults !== null) {
+    return (
+      <aside className="sidebar">
+        <div className="sidebar-search">
+          <SearchBar value={search} onChange={onSearch} />
+        </div>
+        <div className="sidebar-results-header">
+          {searchResults.length === 0
+            ? 'No results found'
+            : `${searchResults.length} page${searchResults.length !== 1 ? 's' : ''} found`}
+        </div>
+        <nav className="sidebar-nav">
+          {searchResults.map(result => (
+            <div key={result.slug} className="search-result-item">
+              <span
+                className={`search-result-title${activePage?.slug === result.slug ? ' active' : ''}`}
+                onClick={() => onSelectPage(result.slug)}
+              >
+                {result.title}
+              </span>
+              {result.snippets.map((snippet, i) => (
+                <p
+                  key={i}
+                  className="search-result-snippet"
+                  dangerouslySetInnerHTML={{ __html: snippet }}
+                />
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+    )
+  }
+
+  // ── Normal grouped mode ───────────────────────────────
+
+  // Filter by tag
   const filtered = activeTag
-    ? afterSearch.filter(p => Array.isArray(p.tags) && p.tags.includes(activeTag))
-    : afterSearch
+    ? pages.filter(p => Array.isArray(p.tags) && p.tags.includes(activeTag))
+    : pages
 
-  // 3. Group filtered pages by category.
-  //    Pages with no category go into 'General'.
-  //    General comes first; all other groups are sorted alphabetically.
+  // Group by category; pages with no category go into 'General'
   const groupMap = {}
   filtered.forEach(page => {
     const key = page.category && page.category.trim() ? page.category.trim() : 'General'
@@ -43,7 +74,7 @@ function Sidebar({ pages, activePage, search, onSearch, onSelectPage, activeTag,
 
       <nav className="sidebar-nav">
         {filtered.length === 0 && (
-          <p className="sidebar-empty">No pages match your search.</p>
+          <p className="sidebar-empty">No pages match this tag.</p>
         )}
         {groupNames.map(group => (
           <div key={group} className="sidebar-group">

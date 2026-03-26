@@ -8,9 +8,28 @@ function App() {
   const [pages, setPages] = useState([])             // list of { slug, title, category, tags }
   const [activePage, setActivePage] = useState(null) // { slug, html, markdown, category, tags }
   const [search, setSearch] = useState('')
+  const [searchResults, setSearchResults] = useState(null) // null = not searching
   const [activeTag, setActiveTag] = useState(null)   // currently selected tag filter
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Debounced full-text search — fires 300ms after the user stops typing
+  useEffect(() => {
+    if (search.trim().length < 2) {
+      setSearchResults(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(search.trim())}`)
+        const data = await res.json()
+        setSearchResults(data)
+      } catch (err) {
+        console.error('Search failed', err)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search])
 
   // Load the page list on startup
   useEffect(() => {
@@ -115,6 +134,7 @@ function App() {
           onSelectPage={loadPage}
           activeTag={activeTag}
           onClearTag={() => setActiveTag(null)}
+          searchResults={searchResults}
         />
 
         {/* Main content area */}
